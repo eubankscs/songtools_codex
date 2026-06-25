@@ -216,18 +216,20 @@ function ProjectItem({
     }
   }
 
-  return (
-    <button
-      className="row project-row"
-      onClick={() => setView({ name: 'project', projectId: project.id })}
-      onContextMenu={(event) => void run(() => openProjectActions(event))}
-    >
-      <span className="primary">{project.name}</span>
-      <span className="secondary">
-        {project.songCount} {project.songCount === 1 ? 'song' : 'songs'}
-      </span>
-    </button>
-  );
+return (
+  <button
+    className="row project-row"
+    onClick={() => setView({ name: 'project', projectId: project.id })}
+    onContextMenu={(event: React.MouseEvent<HTMLButtonElement>) =>
+      void run(() => openProjectActions(event))
+    }
+  >
+    <span className="primary">{project.name}</span>
+    <span className="secondary">
+      {project.songCount} {project.songCount === 1 ? 'song' : 'songs'}
+    </span>
+  </button>
+);
 }
 
 function SystemProjectItem({
