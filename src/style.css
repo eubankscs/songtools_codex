@@ -1,3 +1,26 @@
+:root { font-family: Inter, ui-sans-serif, system-ui, sans-serif; color: #1f2937; background: #f8fafc; }
+html, body, #root { height: 100%; margin: 0; }
+button { font: inherit; }
+.app-shell { min-height: 100%; box-sizing: border-box; padding: 32px; }
+.screen { max-width: 720px; margin: 0 auto; }
+.home-screen { display: flex; flex-direction: column; gap: 18px; }
+.text-action { border: 0; background: transparent; color: #1d4ed8; cursor: pointer; padding: 0; text-align: left; }
+.new-song { font-size: 1.1rem; width: max-content; }
+.secondary-action, .back, .view-all, .recently-deleted { border: 1px solid #cbd5e1; background: #fff; border-radius: 10px; color: #0f172a; cursor: pointer; padding: 10px 14px; width: max-content; }
+.section-title { color: #475569; font-size: 0.78rem; letter-spacing: 0.08em; margin: 8px 0 -8px; text-transform: uppercase; }
+.list { display: flex; flex-direction: column; gap: 8px; }
+.row { background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; box-shadow: 0 1px 2px rgb(15 23 42 / 0.04); }
+.row { align-items: flex-start; cursor: pointer; display: flex; flex-direction: column; padding: 14px 16px; text-align: left; width: 100%; }
+.primary { color: #0f172a; font-size: 1rem; font-weight: 600; }
+.secondary { color: #64748b; font-size: 0.86rem; margin-top: 3px; }
+.view-all { font-weight: 700; justify-content: center; text-align: center; width: 100%; }
+.system-project .primary { font-weight: 600; }
+.recently-deleted { font-size: 0.9rem; padding: 7px 10px; }
+.error { background: #fee2e2; border: 1px solid #fecaca; border-radius: 10px; color: #991b1b; margin: 0 auto 16px; max-width: 720px; padding: 10px 12px; }
+.empty, .hint { color: #64748b; }
+.title-only { color: #0f172a; font-weight: 600; }
+.modal-shell { background: #fff; border: 1px solid #e2e8f0; border-radius: 18px; box-shadow: 0 24px 80px rgb(15 23 42 / 0.18); box-sizing: border-box; margin: 40px auto; max-width: 560px; padding: 28px; position: relative; }
+.close { background: transparent; border: 0; cursor: pointer; font-size: 2rem; position: absolute; right: 18px; top: 12px; }
 :root { font-family: system-ui, sans-serif; color: #1f2937; background: #ffffff; }
 html, body, #root { height: 100%; margin: 0; }
 main { min-height: 100%; }

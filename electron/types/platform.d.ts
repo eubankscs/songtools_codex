@@ -14,4 +14,7 @@ declare module 'electron' {
     loadFile(filePath: string): Promise<void>;
     static getAllWindows(): BrowserWindow[];
   }
+  export const ipcMain: { handle(channel: string, listener: (event: unknown, ...args: any[]) => unknown): void };
+  export const ipcRenderer: { invoke(channel: string, ...args: unknown[]): Promise<unknown> };
+  export const contextBridge: { exposeInMainWorld(apiKey: string, api: unknown): void };
 }
