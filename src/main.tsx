@@ -153,6 +153,7 @@ function RecentlyDeletedShell({ setView }: { setView: (view: View) => void }) {
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return <h2 className="section-title">{children}</h2>;
+}
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './style.css';
