@@ -19,6 +19,7 @@ async function createWindow() {
       nodeIntegration: false
     }
   });
+  const window = new BrowserWindow({ width: 1000, height: 700 });
   if (process.env.VITE_DEV_SERVER_URL) await window.loadURL(process.env.VITE_DEV_SERVER_URL);
   else await window.loadFile(path.join(__dirname, '../dist/index.html'));
 }
