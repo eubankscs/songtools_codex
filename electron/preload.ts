@@ -17,7 +17,5 @@ contextBridge.exposeInMainWorld('songtools', {
   deleteProject: (projectId: string, mode: 'moveSongsToUnassigned' | 'deleteSongs') => invoke('projects:delete', projectId, mode),
   createSong: (title: string, projectId?: string) => invoke('songs:create', title, projectId),
   renameSong: (songId: string, title: string) => invoke('songs:rename', songId, title),
-  openSong: (songId: string) => invoke('songs:open', songId),
-  getEditorDocument: (songId: string) => invoke('editor:getDocument', songId),
-  saveEditorBlocks: (songId: string, blocks: unknown[]) => invoke('editor:saveBlocks', songId, blocks)
+  openSong: (songId: string) => invoke('songs:open', songId)
 });
