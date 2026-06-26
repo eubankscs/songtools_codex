@@ -63,6 +63,56 @@ export interface EditorDocument {
   hasWorkingChanges: boolean;
 }
 
+export interface AnnotationRange {
+  blockId: string;
+  start: number;
+  end: number;
+}
+
+export interface NoteRow {
+  id: string;
+  songId: string;
+  noteType: 'line' | 'section' | 'song';
+  targetId: string | null;
+  body: string;
+}
+
+export interface TagRow {
+  id: string;
+  name: string;
+  color: string | null;
+  createsReviewItem: 0 | 1 | boolean;
+}
+
+export interface AnnotationRow {
+  id: string;
+  songId: string;
+  targetRange: string;
+  parsedRange: AnnotationRange;
+  body: string;
+  tagId: string | null;
+  tagName: string | null;
+  tagColor: string | null;
+}
+
+export interface ReviewQueueRow {
+  id: string;
+  songId: string;
+  targetId: string | null;
+  type: string;
+  message: string;
+  createdOn: string | null;
+  ignoredOn: string | null;
+  resolvedOn: string | null;
+}
+
+export interface EditorialSnapshot {
+  notes: NoteRow[];
+  annotations: AnnotationRow[];
+  tags: TagRow[];
+  reviewQueue: ReviewQueueRow[];
+}
+
 export interface SongtoolsApi {
   getHomeSnapshot(): Promise<HomeSnapshot>;
   listProjects(): Promise<ProjectRow[]>;
@@ -77,6 +127,15 @@ export interface SongtoolsApi {
   saveEditorBlocks(songId: string, blocks: EditorBlock[]): Promise<EditorDocument>;
   saveEditorDocument(songId: string, blocks: EditorBlock[], markers: EditorMarker[]): Promise<EditorDocument>;
   manualSave(songId: string): Promise<EditorDocument>;
+  getEditorialSnapshot(songId: string): Promise<EditorialSnapshot>;
+  upsertNote(songId: string, note: Partial<NoteRow> & Pick<NoteRow, 'noteType' | 'targetId' | 'body'>): Promise<NoteRow>;
+  deleteNote(id: string): Promise<void>;
+  upsertTag(tag: Partial<TagRow> & Pick<TagRow, 'name'>): Promise<TagRow>;
+  deleteTag(id: string): Promise<void>;
+  upsertAnnotation(songId: string, annotation: { id?: string; targetRange: AnnotationRange; body: string; tagId: string | null }): Promise<AnnotationRow>;
+  createReviewItem(songId: string, targetId: string | null, type: string, message: string): Promise<ReviewQueueRow>;
+  resolveReviewItem(id: string): Promise<void>;
+  ignoreReviewItem(id: string): Promise<void>;
 }
 
 declare global {

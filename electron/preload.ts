@@ -21,5 +21,14 @@ contextBridge.exposeInMainWorld('songtools', {
   getEditorDocument: (songId: string) => invoke('editor:getDocument', songId),
   saveEditorBlocks: (songId: string, blocks: unknown[]) => invoke('editor:saveBlocks', songId, blocks),
   saveEditorDocument: (songId: string, blocks: unknown[], markers: unknown[]) => invoke('editor:saveDocument', songId, blocks, markers),
-  manualSave: (songId: string) => invoke('editor:manualSave', songId)
+  manualSave: (songId: string) => invoke('editor:manualSave', songId),
+  getEditorialSnapshot: (songId: string) => invoke('editorial:getSnapshot', songId),
+  upsertNote: (songId: string, note: unknown) => invoke('editorial:upsertNote', songId, note),
+  deleteNote: (id: string) => invoke('editorial:deleteNote', id),
+  upsertTag: (tag: unknown) => invoke('editorial:upsertTag', tag),
+  deleteTag: (id: string) => invoke('editorial:deleteTag', id),
+  upsertAnnotation: (songId: string, annotation: unknown) => invoke('editorial:upsertAnnotation', songId, annotation),
+  createReviewItem: (songId: string, targetId: string | null, type: string, message: string) => invoke('editorial:createReviewItem', songId, targetId, type, message),
+  resolveReviewItem: (id: string) => invoke('editorial:resolveReviewItem', id),
+  ignoreReviewItem: (id: string) => invoke('editorial:ignoreReviewItem', id)
 });

@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import ReactDOM from 'react-dom/client';
 import './style.css';
 import { parseBlocksJson, parseMarkersJson, stringifyBlocks, stringifyMarkers, toRenderableBlocks } from './editorModel';
-import type { ChordPlacement, EditorBlock, EditorDocument, EditorMarker, HomeSnapshot, ProjectDetail, ProjectRow, RecentSongRow, SongRow } from './types';
+import type { AnnotationRow, ChordPlacement, EditorBlock, EditorDocument, EditorMarker, EditorialSnapshot, HomeSnapshot, ProjectDetail, ProjectRow, RecentSongRow, SongRow } from './types';
 
 type View = { name: 'home' } | { name: 'allProjects' } | { name: 'project'; projectId: string } | { name: 'song'; songId: string } | { name: 'recentlyDeleted' };
 
@@ -150,12 +150,15 @@ function SongPlaceholder({ songId, setView }: { songId: string; setView: (view: 
   const [markersJson, setMarkersJson] = useState('');
   const [dirty, setDirty] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [editorial, setEditorial] = useState<EditorialSnapshot | null>(null);
+  const [sidePanel, setSidePanel] = useState<'notes' | 'review' | 'tags' | null>(null);
 
   const load = useCallback(async () => {
     const loaded = await window.songtools.getEditorDocument(songId);
     setDocument(loaded);
     setDraftJson(stringifyBlocks(loaded.blocks));
     setMarkersJson(stringifyMarkers(loaded.markers));
+    setEditorial(await window.songtools.getEditorialSnapshot(songId));
   }, [songId]);
 
   useEffect(() => { load().catch((problem: Error) => setMessage(problem.message)); }, [load]);
@@ -195,6 +198,47 @@ function SongPlaceholder({ songId, setView }: { songId: string; setView: (view: 
     setView({ name: 'home' });
   }
 
+  async function refreshEditorial() {
+    setEditorial(await window.songtools.getEditorialSnapshot(songId));
+  }
+
+  async function addNote() {
+    const noteTypeInput = window.prompt('Note type: song, line, or section', 'song');
+    if (noteTypeInput !== 'song' && noteTypeInput !== 'line' && noteTypeInput !== 'section') return;
+    const targetId = noteTypeInput === 'song' ? null : window.prompt('Target content block id');
+    if (noteTypeInput !== 'song' && !targetId) return;
+    const body = window.prompt('Note body');
+    if (!body) return;
+    await window.songtools.upsertNote(songId, { noteType: noteTypeInput, targetId, body });
+    await refreshEditorial();
+  }
+
+  async function addAnnotation() {
+    const blockId = window.prompt('Lyric block id');
+    if (!blockId) return;
+    const start = Number(window.prompt('Start offset') ?? '0');
+    const end = Number(window.prompt('End offset') ?? `${start}`);
+    const body = window.prompt('Annotation text') ?? '';
+    const tagId = window.prompt('Optional tag id') || null;
+    await window.songtools.upsertAnnotation(songId, { targetRange: { blockId, start, end }, body, tagId });
+    await refreshEditorial();
+  }
+
+  async function addTag() {
+    const name = window.prompt('Tag name');
+    if (!name) return;
+    const color = window.prompt('Tag color, blank for none') || null;
+    const createsReviewItem = window.confirm('Should this tag create a Placeholder lyric review item?');
+    await window.songtools.upsertTag({ name, color, createsReviewItem });
+    await refreshEditorial();
+  }
+
+  async function createReviewTrigger(type: string) {
+    const messageText = window.prompt(`${type} review message`) ?? type;
+    await window.songtools.createReviewItem(songId, null, type, messageText);
+    await refreshEditorial();
+  }
+
   async function manualSave() {
     if (dirty) await persistWorking('Saved working changes before manual save.');
     const saved = await window.songtools.manualSave(songId);
@@ -213,7 +257,13 @@ function SongPlaceholder({ songId, setView }: { songId: string; setView: (view: 
       </header>
       <button className="back" onClick={() => void navigateHome()}>← Home</button>
       {message && <p className="hint">{message}</p>}
-      <EditorCanvas blocks={document?.blocks ?? []} markers={document?.markers ?? []} />
+      <EditorCanvas blocks={document?.blocks ?? []} markers={document?.markers ?? []} annotations={editorial?.annotations ?? []} />
+      <div className="utility-icons">
+        {(editorial?.notes.length ?? 0) > 0 && <button onClick={() => setSidePanel(sidePanel === 'notes' ? null : 'notes')}>Notes {editorial?.notes.length}</button>}
+        {(editorial?.reviewQueue.length ?? 0) > 0 && <button onClick={() => setSidePanel(sidePanel === 'review' ? null : 'review')}>Review {editorial?.reviewQueue.length}</button>}
+      </div>
+      {sidePanel === 'notes' && editorial && <NotesPanel snapshot={editorial} onAdd={addNote} onClose={() => setSidePanel(null)} />}
+      {sidePanel === 'review' && editorial && <ReviewPanel snapshot={editorial} onRefresh={refreshEditorial} onClose={() => setSidePanel(null)} />}
       <section className="editor-data-panel" aria-label="Editor block data">
         <h2>Phase 3a block data</h2>
         <p className="hint">Use JSON chordLine blocks like [{'{'}"type":"chordLine","content":[{'{'}"chord":"G","offset":0{'}'}],"position":0{'}'}]. Offsets are zero-based character positions in the lyric line below.</p>
@@ -222,22 +272,28 @@ function SongPlaceholder({ songId, setView }: { songId: string; setView: (view: 
         <p className="hint">Standalone markers use targetPosition like position:2. Inline markers use the same character-position system as chords: lyricBlockId:offset.</p>
         <textarea value={markersJson} onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) => { setMarkersJson(event.currentTarget.value); setDirty(true); }} aria-label="Arrangement markers JSON" />
         <div className="editor-actions">
+          <button className="secondary-action" onClick={() => void addNote().catch((problem: Error) => setMessage(problem.message))}>Add Note</button>
+          <button className="secondary-action" onClick={() => void addAnnotation().catch((problem: Error) => setMessage(problem.message))}>Add Annotation</button>
+          <button className="secondary-action" onClick={() => setSidePanel(sidePanel === 'tags' ? null : 'tags')}>Manage Tags</button>
+          <button className="secondary-action" onClick={() => void addTag().catch((problem: Error) => setMessage(problem.message))}>Quick Add Tag</button>
+          {['Unknown chord', 'Section conflict', 'Broken section link', 'Ambiguous transpose', 'Manual user flag'].map((type) => <button className="secondary-action" key={type} onClick={() => void createReviewTrigger(type).catch((problem: Error) => setMessage(problem.message))}>{type}</button>)}
           <button className="secondary-action" onClick={() => void persistWorking().catch((problem: Error) => setMessage(problem.message))}>Save Working</button>
           <button className="secondary-action" onClick={() => void manualSave().catch((problem: Error) => setMessage(problem.message))}>Manual Save</button>
         </div>
       </section>
+      {sidePanel === 'tags' && editorial && <TagsPanel snapshot={editorial} onRefresh={refreshEditorial} onClose={() => setSidePanel(null)} />}
     </section>
   );
 }
 
-function EditorCanvas({ blocks, markers }: { blocks: EditorBlock[]; markers: EditorMarker[] }) {
+function EditorCanvas({ blocks, markers, annotations }: { blocks: EditorBlock[]; markers: EditorMarker[]; annotations: AnnotationRow[] }) {
   const renderBlocks = toRenderableBlocks(blocks, markers);
   return (
     <section className="editor-canvas" aria-label="Editor canvas">
       {renderBlocks.length === 0 && <div className="blank-editor-line" contentEditable suppressContentEditableWarning aria-label="Blank song canvas" />}
       {renderBlocks.map((block) => block.kind === 'section'
         ? <div key={`${block.kind}-${block.position}`}><StandaloneMarkers markers={block.standaloneMarkers} /><div className={`section-tag ${block.isFirstSection ? 'first-section' : ''}`}>{block.text}</div></div>
-        : <div key={`${block.kind}-${block.position}`}><StandaloneMarkers markers={block.standaloneMarkers} /><LyricWithChords text={block.text} chords={block.chords} markers={block.inlineMarkers} /></div>)}
+        : <div key={`${block.kind}-${block.position}`}><StandaloneMarkers markers={block.standaloneMarkers} /><LyricWithChords text={block.text} blockId={block.id} chords={block.chords} markers={block.inlineMarkers} annotations={annotations.filter((annotation) => annotation.parsedRange.blockId === block.id)} /></div>)}
     </section>
   );
 }
@@ -248,16 +304,45 @@ function StandaloneMarkers({ markers }: { markers: EditorMarker[] }) {
   return <div className="standalone-marker-row">{markers.map((marker) => <span className="standalone-marker" key={marker.id ?? `${marker.targetPosition}-${marker.text}`}>{marker.text}</span>)}</div>;
 }
 
-function LyricWithChords({ text, chords, markers }: { text: string; chords: ChordPlacement[]; markers: EditorMarker[] }) {
+function LyricWithChords({ text, blockId, chords, markers, annotations }: { text: string; blockId?: string; chords: ChordPlacement[]; markers: EditorMarker[]; annotations: AnnotationRow[] }) {
   const markerOffsets = markers.map((marker) => Number(marker.targetPosition.split(':').at(-1) ?? 0));
   const columnCount = Math.max(text.length + 1, ...chords.map((placement) => placement.offset + placement.chord.length + 1), ...markerOffsets.map((offset) => offset + 1), 1);
   return (
     <div className="lyric-group" style={{ '--columns': columnCount } as React.CSSProperties}>
       {chords.length > 0 && <div className="chord-row">{chords.map((placement, index) => <span className="chord-token" key={`${placement.chord}-${placement.offset}-${index}`} style={{ gridColumn: `${placement.offset + 1} / span ${Math.max(placement.chord.length, 1)}` }}>{placement.chord}</span>)}</div>}
       <div className="inline-marker-row">{markers.map((marker, index) => <span className="inline-marker" key={`${marker.targetPosition}-${marker.text}-${index}`} style={{ gridColumn: `${Number(marker.targetPosition.split(':').at(-1) ?? 0) + 1}` }}>{marker.text}</span>)}</div>
-      <div className="lyric-line">{text || '\u00a0'}</div>
+      <div className="lyric-line">{renderAnnotatedText(text, annotations)}</div>
     </div>
   );
+}
+
+
+function renderAnnotatedText(text: string, annotations: AnnotationRow[]) {
+  if (!text) return '\u00a0';
+  const sorted = [...annotations].sort((left, right) => left.parsedRange.start - right.parsedRange.start);
+  const pieces: React.ReactNode[] = [];
+  let cursor = 0;
+  sorted.forEach((annotation) => {
+    const start = Math.max(cursor, annotation.parsedRange.start);
+    const end = Math.min(text.length, annotation.parsedRange.end);
+    if (start > cursor) pieces.push(text.slice(cursor, start));
+    if (end > start) pieces.push(<span className="annotation" title={annotation.body} style={{ textDecorationColor: annotation.tagColor ?? 'currentColor' }} key={annotation.id}>{text.slice(start, end)}</span>);
+    cursor = Math.max(cursor, end);
+  });
+  if (cursor < text.length) pieces.push(text.slice(cursor));
+  return pieces;
+}
+
+function NotesPanel({ snapshot, onAdd, onClose }: { snapshot: EditorialSnapshot; onAdd: () => Promise<void>; onClose: () => void }) {
+  return <aside className="side-panel"><button className="close" onClick={onClose}>×</button><h2>Song Notes</h2><button className="secondary-action" onClick={() => void onAdd()}>Add Note</button>{snapshot.notes.map((note) => <article key={note.id}><strong>{note.noteType}</strong><p>{note.body}</p></article>)}</aside>;
+}
+
+function ReviewPanel({ snapshot, onRefresh, onClose }: { snapshot: EditorialSnapshot; onRefresh: () => Promise<void>; onClose: () => void }) {
+  return <aside className="side-panel"><button className="close" onClick={onClose}>×</button><h2>Review Queue</h2>{snapshot.reviewQueue.map((item) => <article key={item.id}><strong>{item.type}</strong><p>{item.message}</p><button onClick={async () => { await window.songtools.resolveReviewItem(item.id); await onRefresh(); }}>Resolve</button><button onClick={async () => { await window.songtools.ignoreReviewItem(item.id); await onRefresh(); }}>Ignore</button></article>)}</aside>;
+}
+
+function TagsPanel({ snapshot, onRefresh, onClose }: { snapshot: EditorialSnapshot; onRefresh: () => Promise<void>; onClose: () => void }) {
+  return <aside className="side-panel"><button className="close" onClick={onClose}>×</button><h2>Manage Tags</h2>{snapshot.tags.map((tag) => <article key={tag.id}><strong>{tag.name}</strong><p>{tag.color ?? 'No color'} · creates review: {tag.createsReviewItem ? 'yes' : 'no'}</p><button onClick={async () => { await window.songtools.deleteTag(tag.id); await onRefresh(); }}>Delete</button></article>)}</aside>;
 }
 
 function RecentlyDeletedShell({ setView }: { setView: (view: View) => void }) {
