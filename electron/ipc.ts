@@ -44,11 +44,11 @@ export function registerIpc(database: Database.Database): void {
   ipcMain.handle('editor:saveDocument', (_event, songId: string, blocks: unknown[], markers: unknown[]) => safely(() => editor.saveWorkingDocument(songId, blocks as never, markers as never)));
   ipcMain.handle('editor:manualSave', (_event, songId: string) => safely(() => editor.manualSave(songId)));
   ipcMain.handle('editorial:getSnapshot', (_event, songId: string) => safely(() => editorial.getSnapshot(songId)));
-  ipcMain.handle('editorial:upsertNote', (_event, songId: string, note: never) => safely(() => editorial.upsertNote(songId, note)));
+  ipcMain.handle('editorial:upsertNote', (_event, songId: string, note: unknown) => safely(() => editorial.upsertNote(songId, note as Parameters<EditorialRepository['upsertNote']>[1])));
   ipcMain.handle('editorial:deleteNote', (_event, id: string) => safely(() => editorial.deleteNote(id)));
-  ipcMain.handle('editorial:upsertTag', (_event, tag: never) => safely(() => editorial.upsertTag(tag)));
+  ipcMain.handle('editorial:upsertTag', (_event, tag: unknown) => safely(() => editorial.upsertTag(tag as Parameters<EditorialRepository['upsertTag']>[0])));
   ipcMain.handle('editorial:deleteTag', (_event, id: string) => safely(() => editorial.deleteTag(id)));
-  ipcMain.handle('editorial:upsertAnnotation', (_event, songId: string, annotation: never) => safely(() => editorial.upsertAnnotation(songId, annotation)));
+  ipcMain.handle('editorial:upsertAnnotation', (_event, songId: string, annotation: unknown) => safely(() => editorial.upsertAnnotation(songId, annotation as Parameters<EditorialRepository['upsertAnnotation']>[1])));
   ipcMain.handle('editorial:createReviewItem', (_event, songId: string, targetId: string | null, type: string, message: string) => safely(() => editorial.createReviewItem(songId, targetId, type, message)));
   ipcMain.handle('editorial:resolveReviewItem', (_event, id: string) => safely(() => editorial.resolveReviewItem(id)));
   ipcMain.handle('editorial:ignoreReviewItem', (_event, id: string) => safely(() => editorial.ignoreReviewItem(id)));
