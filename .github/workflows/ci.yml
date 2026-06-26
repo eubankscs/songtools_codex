@@ -1,39 +1,55 @@
 name: CI
 
 on:
-  push:
-    branches: [main, develop]
   pull_request:
-    branches: [main, develop]
+  push:
+    branches:
+      - main
 
 jobs:
-  build-and-test:
+  test:
+    name: Test and build
     runs-on: ubuntu-latest
 
-    strategy:
-      matrix:
-        node-version: [24.x]
-
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: 20
+          cache: npm
+
+      - name: Install SQLite CLI
+        run: sudo apt-get update && sudo apt-get install -y sqlite3
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
-      - name: Run lint
-        run: npm run lint --if-present
+      - name: Run unit tests
+        run: npm test
 
-      - name: Run type check
+      - name: Typecheck
         run: npm run typecheck --if-present
 
-      - name: Run tests
-        run: npm test --if-present
-
-      - name: Build app
+      - name: Build
         run: npm run build --if-present
+
+      - name: Run schema smoke test
+        run: ./test/schema-smoke.sh
+
+      - name: Run Phase 2 smoke test
+        run: ./test/phase2-smoke.sh
+
+      - name: Run Phase 3a smoke test
+        run: ./test/phase3a-smoke.sh
+
+      - name: Run Phase 3b smoke test
+        run: ./test/phase3b-smoke.sh
+
+      - name: Run Phase 4 smoke test
+        run: ./test/phase4-smoke.sh
+
+      - name: Run Phase 5 smoke test
+        run: ./test/phase5-smoke.sh
