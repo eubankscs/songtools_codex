@@ -30,5 +30,13 @@ contextBridge.exposeInMainWorld('songtools', {
   upsertAnnotation: (songId: string, annotation: unknown) => invoke('editorial:upsertAnnotation', songId, annotation),
   createReviewItem: (songId: string, targetId: string | null, type: string, message: string) => invoke('editorial:createReviewItem', songId, targetId, type, message),
   resolveReviewItem: (id: string) => invoke('editorial:resolveReviewItem', id),
-  ignoreReviewItem: (id: string) => invoke('editorial:ignoreReviewItem', id)
+  ignoreReviewItem: (id: string) => invoke('editorial:ignoreReviewItem', id),
+  searchSongs: (query: string) => invoke('phase5:searchSongs', query),
+  moveSong: (songId: string, destinationProjectId: string, renameTo?: string) => invoke('phase5:moveSong', songId, destinationProjectId, renameTo),
+  deleteSong: (songId: string) => invoke('phase5:deleteSong', songId),
+  listRecentlyDeleted: () => invoke('phase5:listRecentlyDeleted'),
+  restoreSong: (songId: string, options: unknown) => invoke('phase5:restoreSong', songId, options),
+  permanentlyDeleteSong: (songId: string) => invoke('phase5:permanentlyDeleteSong', songId),
+  createVariant: (songId: string, title: string, projectId?: string) => invoke('phase5:createVariant', songId, title, projectId),
+  saveWorkingCopyAsVariant: (songId: string, title: string, projectId?: string) => invoke('phase5:saveWorkingCopyAsVariant', songId, title, projectId)
 });

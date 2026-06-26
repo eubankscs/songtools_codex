@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import ReactDOM from 'react-dom/client';
 import './style.css';
 import { parseBlocksJson, parseMarkersJson, stringifyBlocks, stringifyMarkers, toRenderableBlocks } from './editorModel';
-import type { AnnotationRow, ChordPlacement, EditorBlock, EditorDocument, EditorMarker, EditorialSnapshot, HomeSnapshot, ProjectDetail, ProjectRow, RecentSongRow, SongRow } from './types';
+import type { AnnotationRow, ChordPlacement, DeletedSongRow, EditorBlock, EditorDocument, EditorMarker, EditorialSnapshot, HomeSnapshot, ProjectDetail, ProjectRow, RecentSongRow, SearchSongRow, SongRow } from './types';
 
 type View = { name: 'home' } | { name: 'allProjects' } | { name: 'project'; projectId: string } | { name: 'song'; songId: string } | { name: 'recentlyDeleted' };
 
@@ -239,6 +239,51 @@ function SongPlaceholder({ songId, setView }: { songId: string; setView: (view: 
     await refreshEditorial();
   }
 
+  async function moveSong() {
+    const destination = window.prompt('Destination project id');
+    if (!destination) return;
+    const renameTo = window.prompt('Rename if needed; leave blank to keep title') || undefined;
+    await window.songtools.moveSong(songId, destination, renameTo);
+    setMessage('Moved song and committed working changes.');
+  }
+
+  async function deleteSong() {
+    if (!window.confirm('Move this song to Recently Deleted?')) return;
+    await window.songtools.deleteSong(songId);
+    setView({ name: 'home' });
+  }
+
+  async function createVariant() {
+    const title = window.prompt('Variant title');
+    if (!title) return;
+    const variant = await window.songtools.createVariant(songId, title);
+    setView({ name: 'song', songId: variant.id });
+  }
+
+  async function saveWorkingCopyAsVariant() {
+    const title = window.prompt('Working-copy variant title');
+    if (!title) return;
+    const variant = await window.songtools.saveWorkingCopyAsVariant(songId, title);
+    setView({ name: 'song', songId: variant.id });
+  }
+
+  function printSong(includeComments: boolean) {
+    const title = document?.song.title ?? 'Song';
+    const comments = includeComments ? `\n\nNotes:\n${(editorial?.notes ?? []).map((note) => `- ${note.body}`).join('\n')}\n\nAnnotations:\n${(editorial?.annotations ?? []).map((annotation) => `- ${annotation.body}`).join('\n')}` : '';
+    const body = `${title}\n\n${draftJson}\n\nMarkers:\n${markersJson}${comments}`;
+    const printWindow = window.open('', '_blank');
+    printWindow?.document.write(`<pre>${body.replace(/[&<>]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[char] ?? char)}</pre>`);
+    printWindow?.print();
+  }
+
+  function exportData() {
+    window.alert('Export warning: working versions are excluded. Save before exporting if working state should be preserved.');
+  }
+
+  function importData() {
+    window.confirm('Import warning: all local data will be replaced. Continue?');
+  }
+
   async function manualSave() {
     if (dirty) await persistWorking('Saved working changes before manual save.');
     const saved = await window.songtools.manualSave(songId);
@@ -279,6 +324,14 @@ function SongPlaceholder({ songId, setView }: { songId: string; setView: (view: 
           {['Unknown chord', 'Section conflict', 'Broken section link', 'Ambiguous transpose', 'Manual user flag'].map((type) => <button className="secondary-action" key={type} onClick={() => void createReviewTrigger(type).catch((problem: Error) => setMessage(problem.message))}>{type}</button>)}
           <button className="secondary-action" onClick={() => void persistWorking().catch((problem: Error) => setMessage(problem.message))}>Save Working</button>
           <button className="secondary-action" onClick={() => void manualSave().catch((problem: Error) => setMessage(problem.message))}>Manual Save</button>
+          <button className="secondary-action" onClick={() => void moveSong().catch((problem: Error) => setMessage(problem.message))}>Move To Project</button>
+          <button className="secondary-action" onClick={() => void createVariant().catch((problem: Error) => setMessage(problem.message))}>Create Variant</button>
+          <button className="secondary-action" onClick={() => void saveWorkingCopyAsVariant().catch((problem: Error) => setMessage(problem.message))}>Save Working Copy As Variant</button>
+          <button className="secondary-action" onClick={() => printSong(false)}>Print Chart</button>
+          <button className="secondary-action" onClick={() => printSong(true)}>Print With Comments</button>
+          <button className="secondary-action" onClick={exportData}>Export</button>
+          <button className="secondary-action" onClick={importData}>Import</button>
+          <button className="secondary-action" onClick={() => void deleteSong().catch((problem: Error) => setMessage(problem.message))}>Delete Song</button>
         </div>
       </section>
       {sidePanel === 'tags' && editorial && <TagsPanel snapshot={editorial} onRefresh={refreshEditorial} onClose={() => setSidePanel(null)} />}

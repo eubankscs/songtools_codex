@@ -113,6 +113,10 @@ export interface EditorialSnapshot {
   reviewQueue: ReviewQueueRow[];
 }
 
+
+export interface SearchSongRow extends SongRow { containerName: string; }
+export interface DeletedSongRow extends SongRow { containerName: string | null; }
+
 export interface SongtoolsApi {
   getHomeSnapshot(): Promise<HomeSnapshot>;
   listProjects(): Promise<ProjectRow[]>;
@@ -136,6 +140,14 @@ export interface SongtoolsApi {
   createReviewItem(songId: string, targetId: string | null, type: string, message: string): Promise<ReviewQueueRow>;
   resolveReviewItem(id: string): Promise<void>;
   ignoreReviewItem(id: string): Promise<void>;
+  searchSongs(query: string): Promise<SearchSongRow[]>;
+  moveSong(songId: string, destinationProjectId: string, renameTo?: string): Promise<SongRow>;
+  deleteSong(songId: string): Promise<void>;
+  listRecentlyDeleted(): Promise<DeletedSongRow[]>;
+  restoreSong(songId: string, options: { title?: string; mode?: 'permanent' | 'variant' }): Promise<SongRow>;
+  permanentlyDeleteSong(songId: string): Promise<void>;
+  createVariant(songId: string, title: string, projectId?: string): Promise<SongRow>;
+  saveWorkingCopyAsVariant(songId: string, title: string, projectId?: string): Promise<SongRow>;
 }
 
 declare global {

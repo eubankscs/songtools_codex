@@ -3,6 +3,7 @@ import type Database from 'better-sqlite3';
 import { DuplicateNameError, HomeRepository, SystemProjectError, UNASSIGNED_PROJECT_ID } from './db/homeRepository.js';
 import { EditorRepository } from './db/editorRepository.js';
 import { EditorialRepository } from './db/editorialRepository.js';
+import { Phase5Repository } from './db/phase5Repository.js';
 
 function serializeError(error: unknown) {
   if (error instanceof DuplicateNameError || error instanceof SystemProjectError) {
@@ -28,6 +29,7 @@ export function registerIpc(database: Database.Database): void {
   const home = new HomeRepository(database);
   const editor = new EditorRepository(database);
   const editorial = new EditorialRepository(database);
+  const phase5 = new Phase5Repository(database);
   home.ensureSystemContainers();
 
   ipcMain.handle('home:snapshot', () => safely(() => home.getHomeSnapshot()));
@@ -52,4 +54,12 @@ export function registerIpc(database: Database.Database): void {
   ipcMain.handle('editorial:createReviewItem', (_event, songId: string, targetId: string | null, type: string, message: string) => safely(() => editorial.createReviewItem(songId, targetId, type, message)));
   ipcMain.handle('editorial:resolveReviewItem', (_event, id: string) => safely(() => editorial.resolveReviewItem(id)));
   ipcMain.handle('editorial:ignoreReviewItem', (_event, id: string) => safely(() => editorial.ignoreReviewItem(id)));
+  ipcMain.handle('phase5:searchSongs', (_event, query: string) => safely(() => phase5.searchActiveSongs(query)));
+  ipcMain.handle('phase5:moveSong', (_event, songId: string, destinationProjectId: string, renameTo?: string) => safely(() => phase5.moveSong(songId, destinationProjectId, renameTo)));
+  ipcMain.handle('phase5:deleteSong', (_event, songId: string) => safely(() => phase5.deleteSong(songId)));
+  ipcMain.handle('phase5:listRecentlyDeleted', () => safely(() => phase5.listRecentlyDeleted()));
+  ipcMain.handle('phase5:restoreSong', (_event, songId: string, options: unknown) => safely(() => phase5.restoreSong(songId, options as Parameters<Phase5Repository['restoreSong']>[1])));
+  ipcMain.handle('phase5:permanentlyDeleteSong', (_event, songId: string) => safely(() => phase5.permanentlyDeleteSong(songId)));
+  ipcMain.handle('phase5:createVariant', (_event, songId: string, title: string, projectId?: string) => safely(() => phase5.createVariant(songId, title, projectId)));
+  ipcMain.handle('phase5:saveWorkingCopyAsVariant', (_event, songId: string, title: string, projectId?: string) => safely(() => phase5.saveWorkingCopyAsVariant(songId, title, projectId)));
 }
