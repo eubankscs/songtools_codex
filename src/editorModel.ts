@@ -1,3 +1,5 @@
+import type { EditorMarker } from './types';
+
 export interface ChordPlacement {
   chord: string;
   offset: number;
@@ -11,8 +13,8 @@ export interface EditorBlock {
 }
 
 export type RenderBlock =
-  | { kind: 'section'; id?: string; text: string; position: number; isFirstSection: boolean }
-  | { kind: 'lyric'; id?: string; text: string; position: number; chords: ChordPlacement[] };
+  | { kind: 'section'; id?: string; text: string; position: number; isFirstSection: boolean; standaloneMarkers: EditorMarker[] }
+  | { kind: 'lyric'; id?: string; text: string; position: number; chords: ChordPlacement[]; inlineMarkers: EditorMarker[]; standaloneMarkers: EditorMarker[] };
 
 export function normalizeChordPlacements(chords: ChordPlacement[]): ChordPlacement[] {
   return chords.map((placement) => {
@@ -22,8 +24,10 @@ export function normalizeChordPlacements(chords: ChordPlacement[]): ChordPlaceme
   }).sort((left, right) => left.offset - right.offset);
 }
 
-export function toRenderableBlocks(blocks: EditorBlock[]): RenderBlock[] {
+export function toRenderableBlocks(blocks: EditorBlock[], markers: EditorMarker[] = []): RenderBlock[] {
   const sorted = [...blocks].sort((left, right) => left.position - right.position);
+  const inlineMarkers = markers.filter((marker) => marker.displayMode === 'inline');
+  const standaloneMarkers = markers.filter((marker) => marker.displayMode === 'standalone');
   const renderBlocks: RenderBlock[] = [];
   let pendingChords: ChordPlacement[] = [];
   let sectionCount = 0;
@@ -34,14 +38,24 @@ export function toRenderableBlocks(blocks: EditorBlock[]): RenderBlock[] {
       continue;
     }
 
+    const blockStandaloneMarkers = standaloneMarkers.filter((marker) => marker.targetPosition === `position:${block.position}`);
+
     if (block.type === 'section') {
       sectionCount += 1;
-      renderBlocks.push({ kind: 'section', id: block.id, text: String(block.content ?? ''), position: block.position, isFirstSection: sectionCount === 1 });
+      renderBlocks.push({ kind: 'section', id: block.id, text: String(block.content ?? ''), position: block.position, isFirstSection: sectionCount === 1, standaloneMarkers: blockStandaloneMarkers });
       pendingChords = [];
       continue;
     }
 
-    renderBlocks.push({ kind: 'lyric', id: block.id, text: String(block.content ?? ''), position: block.position, chords: pendingChords });
+    renderBlocks.push({
+      kind: 'lyric',
+      id: block.id,
+      text: String(block.content ?? ''),
+      position: block.position,
+      chords: pendingChords,
+      inlineMarkers: inlineMarkers.filter((marker) => marker.targetPosition.startsWith(`${block.id}:`)),
+      standaloneMarkers: blockStandaloneMarkers
+    });
     pendingChords = [];
   }
 
@@ -57,6 +71,20 @@ export function parseBlocksJson(source: string): EditorBlock[] {
   });
 }
 
+export function parseMarkersJson(source: string): EditorMarker[] {
+  const parsed = JSON.parse(source) as EditorMarker[];
+  if (!Array.isArray(parsed)) throw new Error('Editor markers JSON must be an array.');
+  return parsed.map((marker, index) => {
+    if (marker.displayMode !== 'inline' && marker.displayMode !== 'standalone') throw new Error(`Unsupported marker display mode at index ${index}.`);
+    if (!marker.text.trim()) throw new Error(`Marker text is required at index ${index}.`);
+    return marker;
+  });
+}
+
 export function stringifyBlocks(blocks: EditorBlock[]): string {
   return JSON.stringify(blocks, null, 2);
+}
+
+export function stringifyMarkers(markers: EditorMarker[]): string {
+  return JSON.stringify(markers, null, 2);
 }

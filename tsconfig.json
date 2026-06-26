@@ -2,7 +2,11 @@
   "compilerOptions": {
     "target": "ES2022",
     "useDefineForClassFields": true,
-    "lib": ["DOM", "DOM.Iterable", "ES2022"],
+    "lib": [
+      "DOM",
+      "DOM.Iterable",
+      "ES2022"
+    ],
     "allowJs": false,
     "skipLibCheck": true,
     "esModuleInterop": true,
@@ -17,5 +21,9 @@
     "jsx": "react-jsx",
     "ignoreDeprecations": "6.0"
   },
-  "include": ["src", "test", "electron/types", "electron/db"]
+  "include": [
+    "src",
+    "test",
+    "electron/db"
+  ]
 }

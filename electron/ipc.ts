@@ -1,6 +1,7 @@
 import { ipcMain } from 'electron';
 import type Database from 'better-sqlite3';
 import { DuplicateNameError, HomeRepository, SystemProjectError, UNASSIGNED_PROJECT_ID } from './db/homeRepository.js';
+import { EditorRepository } from './db/editorRepository.js';
 
 function serializeError(error: unknown) {
   if (error instanceof DuplicateNameError || error instanceof SystemProjectError) {
@@ -24,6 +25,7 @@ export function registerIpc(database: Database.Database): void {
   if (registered) return;
   registered = true;
   const home = new HomeRepository(database);
+  const editor = new EditorRepository(database);
   home.ensureSystemContainers();
 
   ipcMain.handle('home:snapshot', () => safely(() => home.getHomeSnapshot()));
@@ -35,4 +37,8 @@ export function registerIpc(database: Database.Database): void {
   ipcMain.handle('songs:create', (_event, title: string, projectId = UNASSIGNED_PROJECT_ID) => safely(() => home.createSong(title, projectId)));
   ipcMain.handle('songs:rename', (_event, songId: string, title: string) => safely(() => home.renameSong(songId, title)));
   ipcMain.handle('songs:open', (_event, songId: string) => safely(() => home.openSong(songId)));
+  ipcMain.handle('editor:getDocument', (_event, songId: string) => safely(() => editor.getDocument(songId)));
+  ipcMain.handle('editor:saveBlocks', (_event, songId: string, blocks: unknown[]) => safely(() => editor.saveBlocks(songId, blocks as never)));
+  ipcMain.handle('editor:saveDocument', (_event, songId: string, blocks: unknown[], markers: unknown[]) => safely(() => editor.saveWorkingDocument(songId, blocks as never, markers as never)));
+  ipcMain.handle('editor:manualSave', (_event, songId: string) => safely(() => editor.manualSave(songId)));
 }

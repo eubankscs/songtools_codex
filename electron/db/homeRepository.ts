@@ -135,9 +135,9 @@ export class HomeRepository {
     apply();
   }
 
-  createSong(title: string, projectId = UNASSIGNED_PROJECT_ID): Song {
+  createSong(title: string | null | undefined, projectId = UNASSIGNED_PROJECT_ID): Song {
     this.ensureSystemContainers();
-    const trimmed = this.normalizeRequiredName(title, 'Song title');
+    const trimmed = title?.trim() ? title.trim() : this.nextUntitledSongTitle(projectId);
     if (this.songTitleExists(projectId, trimmed)) throw new DuplicateNameError(`A song named "${trimmed}" already exists in this container.`);
     const id = randomId();
     const timestamp = nowIso();
@@ -163,6 +163,22 @@ export class HomeRepository {
     const song = this.getSong(songId);
     this.touchProject(song.projectId);
     return song;
+  }
+
+
+  private nextUntitledSongTitle(projectId: string): string {
+    const rows = this.database.prepare(
+      "SELECT title FROM songs WHERE projectId = ? AND deletedOn IS NULL AND (title = 'Untitled Song' OR title GLOB 'Untitled Song [0-9]*')"
+    ).all(projectId) as { title: string }[];
+    const used = new Set<number>();
+    for (const row of rows) {
+      if (row.title === 'Untitled Song') used.add(1);
+      const match = /^Untitled Song (\d+)$/.exec(row.title);
+      if (match) used.add(Number(match[1]));
+    }
+    let slot = 1;
+    while (used.has(slot)) slot += 1;
+    return slot === 1 ? 'Untitled Song' : `Untitled Song ${slot}`;
   }
 
   private getProjectRow(projectId: string): ProjectRow {
